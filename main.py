@@ -403,6 +403,9 @@ def send_telegram_notifications(region_jobs, run_name: str, chat_id: str, profil
 # Queue helpers
 # ---------------------------------------------------------------------------
 
+JOB_PRIORITY = 5   # job topics go before background work (phonon graph_label is 1)
+
+
 def _push_profile_to_queue(
     profile: str, resume: str, jobs_df: pd.DataFrame, run_name: str
 ) -> int:
@@ -460,7 +463,9 @@ def _push_profile_to_queue(
     ]
 
     client = LLMQueueClient(dsn=dsn, worker_url=worker_url)
-    task_ids = client.push_batch("job_extract", payloads)
+    # 5, like job_eval (topic config): the client defaults to 0, which sat jobs below phonon's
+    # graph_label backfill (priority 1) once the scheduler stopped boosting everything to 20.
+    task_ids = client.push_batch("job_extract", payloads, priority=JOB_PRIORITY)
     print(f"Pushed {len(task_ids)} jobs for {profile} to job_extract queue")
     return len(task_ids)
 
